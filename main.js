@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FontLoader } from 'three/addons/loaders/FontLoader.js';
 
 // =====================================================
 // SCENA
@@ -133,6 +134,7 @@ function roundedRectShape(width, height, radius) {
     shape.moveTo(x + radius, y);
 
     shape.lineTo(x + width - radius, y);
+
     shape.quadraticCurveTo(
         x + width,
         y,
@@ -141,6 +143,7 @@ function roundedRectShape(width, height, radius) {
     );
 
     shape.lineTo(x + width, y + height - radius);
+
     shape.quadraticCurveTo(
         x + width,
         y + height,
@@ -149,6 +152,7 @@ function roundedRectShape(width, height, radius) {
     );
 
     shape.lineTo(x + radius, y + height);
+
     shape.quadraticCurveTo(
         x,
         y + height,
@@ -157,6 +161,7 @@ function roundedRectShape(width, height, radius) {
     );
 
     shape.lineTo(x, y + radius);
+
     shape.quadraticCurveTo(
         x,
         y,
@@ -170,7 +175,7 @@ function roundedRectShape(width, height, radius) {
 const bodyShape = roundedRectShape(
     3.35,
     1.78,
-    0.42
+    0.18
 );
 
 const bodyGeometry = new THREE.ExtrudeGeometry(
@@ -178,10 +183,10 @@ const bodyGeometry = new THREE.ExtrudeGeometry(
     {
         depth: 0.42,
         bevelEnabled: true,
-        bevelSegments: 5,
-        bevelSize: 0.10,
-        bevelThickness: 0.10,
-        curveSegments: 32
+        bevelSegments: 2,
+        bevelSize: 0.045,
+        bevelThickness: 0.045,
+        curveSegments: 12
     }
 );
 
@@ -228,47 +233,75 @@ scene.add(base);
 
 
 // =====================================================
-// LOGO REDMINGTON
+// LOGO BIANCO ADERENTE AL CORPO AZZURRO
 // =====================================================
 
-const logoCanvas = document.createElement('canvas');
+const logoFontLoader = new FontLoader();
 
-logoCanvas.width = 1200;
-logoCanvas.height = 400;
+logoFontLoader.load(
+    'https://threejs.org/examples/fonts/helvetiker_bold.typeface.json',
 
-const ctx = logoCanvas.getContext('2d');
+    function (font) {
 
-ctx.clearRect(0, 0, 1200, 400);
-ctx.textAlign = 'center';
-ctx.textBaseline = 'middle';
-ctx.fillStyle = '#ffffff';
+        function addLogoText(text, size, y) {
 
-ctx.font = 'bold 108px Arial';
-ctx.fillText('REDMINGTON', 600, 165);
+            const shapes = font.generateShapes(text, size);
 
-ctx.font = '500 34px Arial';
-ctx.fillText('TENNIS EQUIPMENT', 600, 260);
+            const geometry = new THREE.ExtrudeGeometry(shapes, {
+    depth: 0.05,
+    bevelEnabled: false,
+    curveSegments: 12
+});
 
-const logoTexture = new THREE.CanvasTexture(logoCanvas);
+            geometry.computeBoundingBox();
 
-logoTexture.colorSpace = THREE.SRGBColorSpace;
-logoTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+            const box = geometry.boundingBox;
 
-const logo = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.35, 0.78),
-    new THREE.MeshBasicMaterial({
-        map: logoTexture,
-        transparent: true,
-        depthWrite: false,
-        side: THREE.DoubleSide
-    })
+            geometry.translate(
+                -(box.min.x + box.max.x) / 2,
+                -(box.min.y + box.max.y) / 2,
+                -box.min.z
+            );
+
+            const material = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                metalness: 0.05,
+                roughness: 0.25,
+                clearcoat: 1,
+                clearcoatRoughness: 0.12
+            });
+
+            const textMesh = new THREE.Mesh(
+                geometry,
+                material
+            );
+
+            // Posizione sul corpo
+         textMesh.position.set(
+    -0.35,
+    y + 0.02,
+    0.248
 );
 
-logo.position.set(-0.35, 0.02, 0.315);
+            textMesh.castShadow = true;
+            textMesh.receiveShadow = true;
 
-scene.add(logo);
+            scene.add(textMesh);
+        }
 
+        addLogoText('REDMINGTON', 0.25, 0.12);
 
+        addLogoText('TENNIS EQUIPMENT', 0.105, -0.17);
+
+        console.log('Logo bianco aderente al corpo caricato');
+    },
+
+    undefined,
+
+    function (error) {
+        console.error('Errore caricamento font:', error);
+    }
+);
 // =====================================================
 // RIFLESSO FRONTALE
 // =====================================================
@@ -364,9 +397,6 @@ strapShape.quadraticCurveTo(
 
 strapShape.lineTo(0, 0.22);
 strapShape.lineTo(0, -0.22);
-
-
-// Foro della fettuccia
 
 const strapHole = new THREE.Path();
 
@@ -536,19 +566,13 @@ attachment.add(reinforcement);
 // ANELLO PORTACHIAVI
 // =====================================================
 
-// Il centro dell'anello coincide esattamente
-// con il centro del foro della fettuccia.
-
 const ringGroup = new THREE.Group();
 
 ringGroup.position.set(
     1.2,
     -0.2,
     -0.05
-
 );
-
-// Manteniamo la stessa inclinazione richiesta.
 
 ringGroup.rotation.y = THREE.MathUtils.degToRad(40);
 ringGroup.rotation.z = THREE.MathUtils.degToRad(-15);
@@ -566,10 +590,6 @@ const ringPoints = [];
 
 const turns = 1.55;
 const totalAngle = Math.PI * 2 * turns;
-
-// Rotazione iniziale della spirale:
-// porta il terminale metallico sul lato destro
-// della vista frontale.
 
 const terminalAngle = 0;
 
@@ -628,9 +648,6 @@ ringGroup.add(ring);
 // =====================================================
 // TERMINALE METALLICO
 // =====================================================
-
-// Il terminale segue l'ultimo punto della spirale,
-// che ora è orientato verso destra.
 
 const endCap = new THREE.Mesh(
     new THREE.SphereGeometry(0.038, 20, 20),
